@@ -119,6 +119,13 @@ class TestInferenceConfig:
         with pytest.raises(ValueError):
             InferenceConfig(async_sched_mode=invalid_mode)
 
+    def test_gc_mode_defaults_to_unchanged_gc_and_rejects_invalid_value(self):
+        """Ensure the GC policy is opt-in and validated during config construction."""
+        assert InferenceConfig().gc_mode == "default"
+        assert InferenceConfig(gc_mode="freeze_overlap").gc_mode == "freeze_overlap"
+        with pytest.raises(ValueError, match="Unsupported gc_mode"):
+            InferenceConfig(gc_mode="disable")
+
     def test_routing_alpha_accepts_values_above_one(self):
         """Alpha is a load coefficient, not a blend weight, so 1 is not a ceiling.
 
@@ -297,6 +304,25 @@ class TestInferenceConfig:
         inference_config = setup_config.to_inference_config(model=model, verbose=False)
 
         assert inference_config.async_sched_mode == expected
+
+    @pytest.mark.parametrize("gc_mode", ["default", "freeze", "freeze_overlap"])
+    def test_gc_mode_flag_reaches_runtime_config(self, gc_mode):
+        """Ensure --inference-gc-mode defaults to "default" and maps onto InferenceConfig."""
+        parser = _add_inference_args(ArgumentParser())
+        assert parser.parse_args([]).inference_gc_mode == "default"
+        args = parser.parse_args(["--inference-gc-mode", gc_mode])
+        model = SimpleNamespace(
+            position_embedding_type="rope",
+            max_sequence_length=4096,
+            pg_collection="pg",
+            decoder=SimpleNamespace(layer_type_list=None),
+            config=SimpleNamespace(inference_cuda_graph_scope=InferenceCudaGraphScope.none),
+        )
+        setup_config = InferenceSetupConfig(inference_gc_mode=args.inference_gc_mode)
+
+        inference_config = setup_config.to_inference_config(model=model, verbose=False)
+
+        assert inference_config.gc_mode == gc_mode
 
     def test_inference_setup_config_maps_disaggregation_fields(self):
         """Ensure declarative inference config maps disaggregation fields."""

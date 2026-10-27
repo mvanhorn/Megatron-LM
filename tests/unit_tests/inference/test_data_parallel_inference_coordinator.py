@@ -396,6 +396,7 @@ class DummyEngine(DynamicInferenceEngine):
 
         self.ep_world_size = 1
         self.ep_consensus_interval = 1  # TODO: add tests for interval > 1 (e.g. verify pausing is delayed by at most N steps)
+        self._in_custom_gc_mode = False
 
         self.step_start_event = unittest.mock.MagicMock()
         self.step_end_event = unittest.mock.MagicMock()

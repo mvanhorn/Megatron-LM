@@ -2093,6 +2093,8 @@ def test_async_suspend_pending_logits_lifecycle(mode, preserve_pending):
     engine.waiting_request_ids = deque()
     engine.requests = {}
     engine.use_coordinator = False
+    engine.gc_mode = "default"
+    engine._in_custom_gc_mode = False
     engine._vision_embedding_cache = {}
     engine._vision_embedding_cache_bytes = 0
 
